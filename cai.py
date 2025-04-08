@@ -5,24 +5,29 @@ import re
 import os
 
 class TimeBasedParser:
+    """基于时间格式的文本解析器，用于识别和处理时间标记的内容"""
     def __init__(self):
         # 时间格式匹配 (h:mm 或 h:mm:ss)
         self.time_pattern = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
-        # 标题识别模式
+        # 标题识别模式（匹配【标题】或[标题]格式）
         self.title_pattern = re.compile(r'[【[](.*?)[]】]')
-        # 结束标记
+        # 结束标记，用于标识内容块的结束
         self.end_markers = ["分享", "转发", "结束", "------"]
 
     def is_time(self, text):
+        """检查文本是否符合时间格式"""
         text = str(text).strip()
         return bool(self.time_pattern.match(text))
 
     def is_end_marker(self, text):
+        """检查文本是否是结束标记"""
         text = str(text).strip()
         return text in self.end_markers
 
     def extract_title_content(self, text):
-        """提取标题并清理内容"""
+        """从文本中提取标题并清理内容
+        返回: (标题, 清理后的内容)
+        """
         lines = text.split('\n')
         if not lines:
             return "", ""
@@ -39,15 +44,22 @@ class TimeBasedParser:
         return title, '\n'.join(lines).strip()
 
 def process_workbook(input_path, output_path):
+    """处理Excel工作簿，提取时间标记的内容并保存到新文件
+    参数:
+        input_path: 输入Excel文件路径
+        output_path: 输出Excel文件路径
+    返回:
+        bool: 处理是否成功
+    """
     parser = TimeBasedParser()
     try:
         wb = load_workbook(input_path)
         sheet = wb.active
         
-        results = []
-        current_time = None
-        content_lines = []
-        time_data_count = defaultdict(int)
+        results = []  # 存储解析结果
+        current_time = None  # 当前处理的时间标记
+        content_lines = []  # 当前时间标记下的内容行
+        time_data_count = defaultdict(int)  # 统计各时间标记的数据量
         
         for row_idx, row in enumerate(sheet.iter_rows(values_only=True), 1): # type: ignore
             cell_value = row[0] if row and row[0] is not None else ""
@@ -135,11 +147,13 @@ def process_workbook(input_path, output_path):
         return False
 
 if __name__ == "__main__":
+    """主程序入口"""
     input_file = input("请输入原始文件路径: ").strip('"')
     if not os.path.exists(input_file):
         print(f"文件不存在: {input_file}")
         exit()
     
+    # 生成输出文件路径（与输入文件同目录，文件名添加"_时间版结果"后缀）
     output_file = os.path.join(
         os.path.dirname(input_file),
         f"{os.path.splitext(os.path.basename(input_file))[0]}_时间版结果.xlsx"
